@@ -1,0 +1,18 @@
+const nextJest = require("next/jest");
+
+const createJestConfig = nextJest({
+  dir: "./",
+});
+
+// eslint-disable-next-line jsdoc/check-tag-names
+/** @type {import('jest').Config} */
+const config = {
+  modulePathIgnorePatterns: ["<rootDir>/e2e/"],
+  testEnvironment: "jest-environment-jsdom",
+  moduleNameMapper: {
+    "^@/(.)$": "<rootDir>/src/$1",
+  },
+  setupFilesAfterEnv: ["./jest.setup.ts", "./src/lib/prismaMock.ts"],
+};
+
+module.exports = createJestConfig(config);

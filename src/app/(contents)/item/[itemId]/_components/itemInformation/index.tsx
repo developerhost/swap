@@ -1,0 +1,93 @@
+import { type Prisma } from "@prisma/client";
+import Link from "next/link";
+
+import { CONDITION, SHIPPING_DAYS, SHIPPING_METHOD } from "@/constants/item";
+import { type findItemById } from "@/repositories/item";
+import { Badge } from "@/ui/Badge";
+import { Card } from "@/ui/card";
+import { hasObjectKey } from "@/utils/typeGuard";
+import { useId } from "react";
+
+const labelClass = "font-semibold text-gray-700";
+const textClass = "text-gray-600";
+
+type Props = {
+  /** 商品クエリの結果 */
+  item: Prisma.PromiseReturnType<typeof findItemById>;
+};
+
+/**
+ * 商品情報
+ */
+export const ItemInformation = ({ item }: Props) => {
+  const id = useId();
+  const {
+    conditionCode,
+    shippingMethodCode,
+    shippingDaysCode,
+    isShippingIncluded,
+  } = item;
+
+  const condition = hasObjectKey(CONDITION, conditionCode)
+    ? CONDITION[conditionCode]
+    : "不明";
+
+  const shippingMethod = hasObjectKey(SHIPPING_METHOD, shippingMethodCode)
+    ? SHIPPING_METHOD[shippingMethodCode]
+    : "不明";
+
+  const shippingDays = hasObjectKey(SHIPPING_DAYS, shippingDaysCode)
+    ? SHIPPING_DAYS[shippingDaysCode]
+    : "不明";
+
+  const shippingInclude = isShippingIncluded
+    ? "送料込み(出品者負担)"
+    : "送料別(購入者負担)";
+
+  return (
+    <Card>
+      <dl className="grid w-full gap-4">
+        <dt id={`condition-${id}`} className={labelClass}>
+          商品の状態
+        </dt>
+        <dd aria-labelledby={`condition-${id}`} className={textClass}>
+          {condition}
+        </dd>
+        <dt id={`tag-${id}`} className={labelClass}>
+          タグ名
+        </dt>
+        <div className="flex flex-wrap gap-2">
+          {item.tags.map((itemTag) => (
+            <dd aria-labelledby={`tag-${id}`} key={itemTag.id}>
+              <Link href={`/search?tagid=${itemTag.id}`}>
+                <Badge className="badge-lg select-none bg-blue-100 text-blue-800">
+                  {itemTag.tag.text}
+                </Badge>
+              </Link>
+            </dd>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <dt id={`shipping-${id}`} className={labelClass}>
+            配送方法
+          </dt>
+          <dd aria-labelledby={`shipping-${id}`} className={textClass}>
+            {shippingMethod}
+          </dd>
+          <dt id={`shipping-include-${id}`} className={labelClass}>
+            配送料の負担
+          </dt>
+          <dd aria-labelledby="shipping-include" className={textClass}>
+            {shippingInclude}
+          </dd>
+          <dt id={`shipping-days-${id}`} className={labelClass}>
+            発送までの日数
+          </dt>
+          <dd aria-labelledby={`shipping-days-${id}`} className={textClass}>
+            {shippingDays}
+          </dd>
+        </div>
+      </dl>
+    </Card>
+  );
+};

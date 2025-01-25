@@ -1,0 +1,79 @@
+/* eslint-disable testing-library/no-unnecessary-act */
+import { fireEvent, render, screen } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+
+import { ItemTagsInput } from "@/features/itemsFormContents/itemTags";
+
+describe("ItemTagsInput", () => {
+  describe("タグの追加", () => {
+    test("Enterでタグを追加できること", async () => {
+      render(<ItemTagsInput name="tag" suggestedTags={[]} />);
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "newTag");
+
+      fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+      expect(screen.getByText("newTag")).toBeInTheDocument();
+    });
+
+    test("タグ追加後、タグの入力欄は空になること", async () => {
+      render(<ItemTagsInput name="tag" suggestedTags={[]} />);
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "newTag");
+
+      fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+      expect(input).toHaveValue("");
+    });
+
+    test("重複して同じ名前のタグを追加できないこと", async () => {
+      render(<ItemTagsInput name="tag" suggestedTags={[]} />);
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "newTag");
+      fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+      fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+      expect(screen.getAllByText("newTag")).toHaveLength(1);
+    });
+
+    test("カンマは入力できないこと", async () => {
+      render(<ItemTagsInput name="tag" suggestedTags={[]} />);
+      const input = screen.getByRole("combobox");
+      await userEvent.type(input, "new,Tag");
+
+      fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+      expect(screen.getByText("newTag")).toBeInTheDocument();
+    });
+  });
+
+  test("focus時にsuggestedTagsが表示されること", async () => {
+    const suggestedTags = [
+      { id: "1", text: "tag1", createdAt: new Date() },
+      { id: "2", text: "tag2", createdAt: new Date() },
+    ];
+    render(<ItemTagsInput name="tag" suggestedTags={suggestedTags} />);
+    const input = screen.getByRole("combobox");
+
+    await userEvent.click(input);
+
+    expect(screen.getByTestId("test-tag1")).toBeInTheDocument();
+    expect(screen.getByTestId("test-tag2")).toBeInTheDocument();
+  });
+
+  test("タグの削除ができること", async () => {
+    render(<ItemTagsInput name="tag" suggestedTags={[]} />);
+    const input = screen.getByRole("combobox");
+    await userEvent.type(input, "newTag");
+
+    fireEvent.keyDown(input, { keyCode: 13, target: input });
+
+    const deleteButton = screen.getByTestId("delete");
+
+    await userEvent.click(deleteButton);
+
+    expect(screen.queryByText("newTag")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tags")).not.toBeInTheDocument();
+  });
+});

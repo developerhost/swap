@@ -1,0 +1,625 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider     = "mysql"
+    url          = env("DATABASE_URL")
+    relationMode = "prisma"
+}
+
+generator erd {
+    provider = "prisma-erd-generator"
+}
+
+// ユーザーテーブル
+model User {
+    id                   String    @id @default(uuid()) @map("_id")
+    name                 String? // ユーザー名
+    email                String    @unique // todo 削除する
+    introduction         String? // 自己紹介
+    isEmailVerified      Boolean   @default(false) @map("is_email_verified") // メールアドレス認証済みフラグ
+    isIdentityVerified   Boolean   @default(false) @map("is_identity_verified") // 本人確認済みフラグ
+    image                String? // アイコン画像URL
+    balance              Int       @default(0) // todo 削除する
+    createdAt            DateTime  @default(now()) @map("created_at") // アカウント作成日時
+    updatedAt            DateTime  @default(now()) @map("updated_at") // アカウント更新日時
+    lastLoginDate        DateTime  @default(now()) @map("last_login_date") // 最終ログイン日時
+    isDeleted            Boolean   @default(false) @map("is_deleted") // 削除フラグ
+    isBanned             Boolean   @default(false) @map("is_banned") // 凍結フラグ
+    noticePermissionCode Int       @default(0) // 通知設定のビットフラグ
+    emailVerified        DateTime? @map("email_verified") // メールアドレス認証日時(これはnextAuthで決められた値なので変更不可)
+
+    accounts                    Account[]
+    sessions                    Session[]
+    addresses                   Address[]
+    transferRequests            TransferRequest[]
+    browsingHistories           BrowsingHistory[]
+    itemComments                ItemComment[]
+    likes                       Like[]
+    userNotificationReads       UserNotificationRead[]
+    items                       Item[]                       @relation("seller")
+    transactions                Transaction[]                @relation("buyer")
+    raterTransactions           TransactionRating[]          @relation("rater")
+    ratedTransactions           TransactionRating[]          @relation("rated")
+    transactionComments         TransactionComment[]
+    userNotificationPermits     UserNotificationPermit[]
+    itemReports                 ItemReport[]
+    itemCommentReports          ItemCommentReport[]
+    draftItems                  DraftItem[]                  @relation("seller")
+    emailVerificationCode       EmailVerificationCode?       @relation
+    bankAccounts                BankAccount?                 @relation
+    confidentialUserInformation ConfidentialUserInformation?
+
+    @@map("users")
+}
+
+// ユーザー秘匿情報テーブル
+model ConfidentialUserInformation {
+    id           String        @id @default(uuid()) @map("_id")
+    userId       String        @unique @map("user_id") // ユーザーID外部キー
+    email        String        @unique // メールアドレス
+    balance      Int           @default(0) // 残高
+    points       Int           @default(0) // ポイント
+    pointChanges PointChange[]
+    user         User          @relation(fields: [userId], references: [id])
+    userCoupons  UserCoupon[]
+
+    @@map("confidential_user_information")
+}
+
+// ユーザー住所テーブル
+model Address {
+    id           String  @id @default(uuid()) @map("_id")
+    userId       String  @unique @map("user_id") // ユーザーID外部キー
+    name         String // 名前
+    postalCode   String  @map("postal_code") // 郵便番号
+    prefecture   String // 都道府県
+    city         String // 市区町村
+    addressLine1 String  @map("address_line1") // 住所1
+    addressLine2 String? @map("address_line2") // 住所2
+    phoneNumber  String  @map("phone_number") // 電話番号
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@index([userId])
+    @@map("addresses")
+}
+
+// メールアドレス検証コードテーブル
+model EmailVerificationCode {
+    id        String   @id @default(uuid()) @map("_id")
+    userId    String   @unique @map("user_id") // ユーザーID外部キー
+    code      String   @unique @map("code") // メールアドレス検証コード
+    expiredAt DateTime @map("expired_at") // 有効期限
+
+    user User? @relation(fields: [userId], references: [id])
+
+    @@index([userId])
+    @@map("email_verification_code")
+}
+
+// 振込申請テーブル
+model TransferRequest {
+    id            String   @id @default(uuid()) @map("_id")
+    userId        String   @map("user_id") // ユーザーID外部キー
+    amount        Int // 金額
+    date          DateTime @default(now()) // 申請日時
+    isTransferred Boolean  @default(false) @map("is_transferred") // 振込済みフラグ
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@index([userId])
+    @@map("transfer_requests")
+}
+
+// ポイント増減テーブル
+model PointChange {
+    id                 String   @id @default(uuid()) @map("_id")
+    userId             String   @map("user_id") // ユーザーID外部キー
+    amount             Int // 金額
+    date               DateTime @default(now()) // 日時
+    description        String? // 説明
+    pointChangeEventId String?  @map("point_change_event_id") // ポイント増減イベントID外部キー
+
+    confidentialUserInformation ConfidentialUserInformation? @relation(fields: [userId], references: [userId])
+    pointChangeEvent            PointChangeEvent?            @relation(fields: [pointChangeEventId], references: [id])
+
+    @@index([userId], name: "idx_point_changes_user_id") // ユーザーIDに対するインデックス
+    @@index([pointChangeEventId], name: "idx_point_change_event_id") // ポイント増減イベントIDに対するインデックス
+    @@map("point_changes")
+}
+
+// ポイント増減イベントテーブル
+model PointChangeEvent {
+    id     String @id @default(uuid()) @map("_id")
+    name   String // イベント名
+    amount Int?   @default(0) // 金額
+
+    pointChanges PointChange[]
+
+    @@map("point_change_events")
+}
+
+// クーポン種別テーブル
+model Coupon {
+    id             String    @id @default(uuid()) @map("_id")
+    name           String // クーポン名
+    discountAmount Int?      @map("discount_amount") // 割引金額
+    discountRate   Int?      @map("discount_rate") // 割引率
+    startDate      DateTime? @map("start_date") // 開始日時
+    endDate        DateTime? @map("end_date") // 終了日時
+
+    userCoupons UserCoupon[]
+
+    @@map("coupons")
+}
+
+// クーポンテーブル
+model UserCoupon {
+    id            String  @id @default(uuid()) @map("_id")
+    userId        String  @map("user_id") // ユーザーID外部キー
+    couponId      String  @map("coupon_id") // クーポンID外部キー
+    isUsed        Boolean @default(false) @map("is_used") // 使用済みフラグ
+    transactionId String? @map("transaction_id")
+
+    confidentialUserInformation ConfidentialUserInformation? @relation(fields: [userId], references: [userId])
+    coupon                      Coupon                       @relation(fields: [couponId], references: [id])
+    transaction                 Transaction?                 @relation(fields: [transactionId], references: [id])
+
+    @@index([userId], name: "idx_user_coupons_user_id") // ユーザーIDに対するインデックス
+    @@index([couponId], name: "idx_user_coupons_coupon_id") // クーポンIDに対するインデックス
+    @@index([transactionId], name: "idx_user_coupons_transaction_id") // 取引IDに対するインデックス
+    @@map("user_coupons")
+}
+
+// 出品情報テーブル
+model Item {
+    id                   String   @id @default(uuid())
+    name                 String // 商品名
+    price                Int // 価格
+    previousPrice        Int?     @map("previous_price") // 変更前価格
+    description          String // 説明
+    isPublic             Boolean  @default(true) @map("is_public") // 公開フラグ
+    isDeleted            Boolean  @default(false) @map("is_deleted") // 削除フラグ
+    createdAt            DateTime @default(now()) @map("created_at") // 出品日時
+    updatedAt            DateTime @default(now()) @map("updated_at") // 商品更新日時
+    sellerId             String   @map("seller_id") // 出品者ID外部キー
+    shippingDaysCode     String   @map("shipping_days_code") // 発送までの日数コード
+    shippingMethodCode   String   @map("shipping_method_code") // 配送方法コード
+    shippingMethodCustom String?  @map("shipping_method_custom") // 配送方法（ユーザ入力）
+    conditionCode        String   @map("condition_code") // 商品状態コード
+    pageView             Int      @default(0) @map("page_view") // ページ閲覧数
+    isShippingIncluded   Boolean  @default(false) @map("is_shipping_included")
+
+    seller      User         @relation("seller", fields: [sellerId], references: [id])
+    transaction Transaction?
+
+    images     ItemImage[]
+    histories  BrowsingHistory[]
+    comments   ItemComment[]
+    likes      Like[]
+    categories ItemCategory[]
+    tags       ItemTag[]
+    reports    ItemReport[]
+
+    @@index([sellerId], name: "idx_items_seller_id") // 出品者IDに対するインデックス
+    @@map("items")
+}
+
+model DraftItem {
+    id                   String   @id @default(uuid())
+    sellerId             String   @map("seller_id") // 出品者ID外部キー
+    name                 String? // 商品名
+    price                Int? // 価格
+    previousPrice        Int?     @map("previous_price") // 変更前価格
+    description          String? // 説明
+    shippingDaysCode     String?  @map("shipping_days_code") // 発送までの日数コード
+    shippingMethodCode   String?  @map("shipping_method_code") // 配送方法コード
+    shippingMethodCustom String?  @map("shipping_method_custom") // 配送方法（ユーザ入力）
+    conditionCode        String?  @map("condition_code") // 商品状態コード
+    isShippingIncluded   Boolean? @map("is_shipping_included")
+    createdAt            DateTime @default(now()) @map("created_at") // 下書き作成日時
+    updatedAt            DateTime @default(now()) @map("updated_at") // 下書き更新日時
+
+    seller User @relation("seller", fields: [sellerId], references: [id])
+
+    images     DraftImage[]
+    categories DraftCategory[]
+    tags       DraftTag[]
+
+    @@index([sellerId], name: "idx_draft_items_seller_id") // 出品者IDに対するインデックス
+    @@map("draft_items")
+}
+
+// 出品情報通報テーブル
+model ItemReport {
+    id      String @id @default(uuid())
+    itemId  String @map("item_id") // 出品情報ID外部キー
+    userId  String @map("user_id") // ユーザーID外部キー
+    comment String // 通報コメント
+
+    item Item @relation(fields: [itemId], references: [id])
+    user User @relation(fields: [userId], references: [id])
+
+    @@unique([itemId, userId])
+    @@index([itemId], name: "idx_item_reports_item_id") // 出品情報IDに対するインデックス
+    @@index([userId], name: "idx_item_reports_user_id") // ユーザーIDに対するインデックス
+    @@map("item_reports")
+}
+
+// 出品画像テーブル
+model ItemImage {
+    id       String  @id @default(uuid())
+    itemId   String  @map("item_id") // 出品情報ID外部キー
+    imageURL String  @map("image_url") // 画像URL
+    caption  String? // キャプション
+    order    Int     @default(0) // 並び順
+
+    item Item @relation(fields: [itemId], references: [id])
+
+    @@index([itemId], name: "idx_item_images_item_id") // 出品情報IDに対するインデックス
+    @@map("images")
+}
+
+model DraftImage {
+    id          String  @id @default(uuid())
+    draftItemId String  @map("draft_item_id") // 出品情報ID外部キー
+    imageURL    String  @map("image_url") // 画像URL
+    caption     String? // キャプション
+    order       Int     @default(0) // 並び順
+
+    item DraftItem @relation(fields: [draftItemId], references: [id])
+
+    @@index([draftItemId], name: "idx_draft_images_draft_item_id") // 出品情報IDに対するインデックス
+    @@map("draft_images")
+}
+
+// カテゴリーテーブル
+model Category {
+    id           String  @id @default(uuid())
+    parentId     String? @map("parent_id") // 親カテゴリーID外部キー
+    categoryName String  @map("category_name") // カテゴリー名
+
+    parentCategory Category? @relation("parentCategory", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction) // カテゴリーの再帰構造
+
+    children        Category[]      @relation("parentCategory")
+    itemCategories  ItemCategory[]
+    draftCategories DraftCategory[]
+
+    @@index([parentId], name: "idx_categories_parent_id") // 親カテゴリーIDに対するインデックス
+    @@map("categories")
+}
+
+// 商品カテゴリーテーブル
+model ItemCategory {
+    id         String @id @default(uuid())
+    itemId     String @map("item_id") // 出品情報ID外部キー
+    categoryId String @map("category_id") // カテゴリーID外部キー
+
+    item     Item     @relation(fields: [itemId], references: [id])
+    category Category @relation(fields: [categoryId], references: [id])
+
+    @@unique([itemId, categoryId])
+    @@index([itemId], name: "idx_item_categories_item_id") // 出品情報IDに対するインデックス
+    @@index([categoryId], name: "idx_item_categories_category_id") // カテゴリーIDに対するインデックス
+    @@map("item_categories")
+}
+
+model DraftCategory {
+    id          String @id @default(uuid())
+    draftItemId String @map("draft_item_id") // 出品情報ID外部キー
+    categoryId  String @map("category_id") // カテゴリーID外部キー
+
+    item     DraftItem @relation(fields: [draftItemId], references: [id])
+    category Category  @relation(fields: [categoryId], references: [id])
+
+    @@unique([draftItemId, categoryId])
+    @@index([draftItemId], name: "idx_draft_categories_draft_item_id") // 出品情報IDに対するインデックス
+    @@index([categoryId], name: "idx_draft_categories_category_id") // カテゴリーIDに対するインデックス
+    @@map("draft_categories")
+}
+
+// いいねテーブル
+model Like {
+    id        String   @id @default(uuid())
+    itemId    String   @map("item_id") // 出品情報ID外部キー
+    userId    String   @map("user_id") // ユーザーID外部キー
+    createdAt DateTime @default(now()) @map("created_at") // 作成日時
+
+    user User @relation(fields: [userId], references: [id])
+    item Item @relation(fields: [itemId], references: [id])
+
+    @@unique([userId, itemId])
+    @@index([userId], name: "idx_likes_user_id") // ユーザーIDに対するインデックス
+    @@index([itemId], name: "idx_likes_item_id") // 出品情報IDに対するインデックス
+    @@map("likes")
+}
+
+// タグテーブル
+model Tag {
+    id        String   @id @default(uuid())
+    text      String   @unique // タグ名
+    createdAt DateTime @default(now()) @map("created_at") // 作成日時
+
+    itemTags  ItemTag[]
+    draftTags DraftTag[]
+
+    @@map("tags")
+}
+
+// 出品情報タグテーブル
+model ItemTag {
+    id     String @id @default(uuid())
+    itemId String @map("item_id") // 出品情報ID外部キー
+    tagId  String @map("tag_id") // タグID外部キー
+
+    item Item @relation(fields: [itemId], references: [id])
+    tag  Tag  @relation(fields: [tagId], references: [id])
+
+    @@unique([itemId, tagId])
+    @@index([itemId], name: "idx_item_tags_item_id") // 出品情報IDに対するインデックス
+    @@index([tagId], name: "idx_item_tags_tag_id") // タグIDに対するインデックス
+    @@map("item_tags")
+}
+
+model DraftTag {
+    id          String @id @default(uuid())
+    draftItemId String @map("draft_item_id") // 出品情報ID外部キー
+    tagId       String @map("tag_id") // タグID外部キー
+
+    item DraftItem @relation(fields: [draftItemId], references: [id])
+    tag  Tag       @relation(fields: [tagId], references: [id])
+
+    @@unique([draftItemId, tagId])
+    @@index([draftItemId], name: "idx_draft_tags_draft_item_id") // 出品情報IDに対するインデックス
+    @@index([tagId], name: "idx_draft_tags_tag_id") // タグIDに対するインデックス
+    @@map("draft_tags")
+}
+
+// 出品情報コメントテーブル
+model ItemComment {
+    id        String    @id @default(uuid())
+    itemId    String    @map("item_id") // 出品情報ID外部キー
+    userId    String    @map("user_id") // ユーザーID外部キー
+    comment   String // コメント
+    createdAt DateTime  @default(now()) @map("created_at") // 作成日時
+    deletedAt DateTime? @map("deleted_at") // 削除日時
+
+    user    User                @relation(fields: [userId], references: [id])
+    item    Item                @relation(fields: [itemId], references: [id])
+    reports ItemCommentReport[]
+
+    @@index([userId], name: "idx_item_comments_user_id") // ユーザーIDに対するインデックス
+    @@index([itemId], name: "idx_item_comments_item_id") // 出品情報IDに対するインデックス
+    @@map("item_comments")
+}
+
+model ItemCommentReport {
+    id            String   @id @default(uuid())
+    itemCommentId String   @map("item_comment_id") // 出品情報コメントID外部キー
+    userId        String   @map("user_id") // ユーザーID外部キー
+    reason        String // 通報理由
+    createdAt     DateTime @default(now()) @map("created_at") // 作成日時
+
+    itemComment ItemComment @relation(fields: [itemCommentId], references: [id])
+    user        User        @relation(fields: [userId], references: [id])
+
+    @@unique([itemCommentId, userId])
+    @@index([itemCommentId], name: "idx_item_comment_reports_item_comment_id") // 出品情報コメントIDに対するインデックス
+    @@index([userId], name: "idx_item_comment_reports_user_id") // ユーザーIDに対するインデックス
+    @@map("item_comment_reports")
+}
+
+// 取引テーブル
+model Transaction {
+    id                  String   @id @default(uuid())
+    itemId              String   @unique @map("item_id") // 出品情報ID外部キー
+    buyerId             String   @map("buyer_id") // 購入者ID外部キー
+    externalPaymentId   String?  @map("external_payment_id") // 外部決済ID
+    isCanceled          Boolean  @default(false) @map("is_canceled") // 取引キャンセルフラグ
+    userCouponId        String?  @map("user_coupon_id") // ユーザークーポンID外部キー
+    purchaseDate        DateTime @default(now()) @map("purchase_date") // 購入日時
+    transactionRatingId String?  @map("transaction_rating_id") // 取引評価ID外部キー
+    trackingNumber      String?
+    statusCode          Int      @default(0) @map("status_code") // 取引ステータス 0: 購入者が支払い完了,出品者が発送待ち, 1: 出品者が発送済み,購入者が受取待ち, 2: 購入者が受け取り完了,出品者が評価待ち 3: 取引完了
+
+    buyer User @relation("buyer", fields: [buyerId], references: [id])
+    item  Item @relation(fields: [itemId], references: [id])
+
+    coupons  UserCoupon[]
+    ratings  TransactionRating[]
+    comments TransactionComment[]
+
+    @@unique([itemId, buyerId])
+    @@index([itemId], name: "idx_transactions_item_id")
+    @@index([buyerId], name: "idx_transactions_buyer_id")
+    @@map("transactions")
+}
+
+// 取引コメントテーブル
+model TransactionComment {
+    id            String   @id @default(uuid())
+    transactionId String   @map("transaction_id") // 取引ID外部キー
+    userId        String   @map("user_id") // ユーザーID外部キー
+    comment       String // コメント
+    hasRead       Boolean  @default(false) @map("has_read") // 既読フラグ
+    createdAt     DateTime @default(now()) @map("created_at") // 作成日時
+
+    user        User        @relation(fields: [userId], references: [id])
+    transaction Transaction @relation(fields: [transactionId], references: [id])
+
+    @@index([userId], name: "idx_transaction_comments_user_id")
+    @@index([transactionId], name: "idx_transaction_comments_transaction_id")
+    @@map("transaction_comments")
+}
+
+// 取引評価テーブル
+model TransactionRating {
+    id                        String  @id @default(uuid())
+    transactionId             String  @map("transaction_id") // 取引ID外部キー
+    raterId                   String  @map("rater_id") // 評価者ID外部キー
+    ratedId                   String  @map("rated_id") // 評価されたユーザーID外部キー
+    transactionRatingOptionId String? @map("transaction_rating_option_id") // 取引評価選択肢ID外部キー
+    comment                   String? // コメント
+
+    rater                   User                     @relation("rater", fields: [raterId], references: [id])
+    rated                   User                     @relation("rated", fields: [ratedId], references: [id])
+    transaction             Transaction              @relation(fields: [transactionId], references: [id])
+    transactionRatingOption TransactionRatingOption? @relation(fields: [transactionRatingOptionId], references: [id])
+
+    @@unique([transactionId, raterId, ratedId])
+    @@index([transactionId], name: "idx_transaction_ratings_transaction_id")
+    @@index([transactionRatingOptionId], name: "idx_transaction_ratings_transaction_rating_option_id")
+    @@index([raterId], name: "idx_transaction_ratings_rater_id")
+    @@index([ratedId], name: "idx_transaction_ratings_rated_id")
+    @@map("user_transaction_ratings")
+}
+
+// 取引評価選択肢テーブル
+model TransactionRatingOption {
+    id     String @id @default(uuid())
+    name   String @unique // 選択肢名
+    rating Int    @unique // 評価
+
+    ratings TransactionRating[]
+
+    @@map("transaction_ratings")
+}
+
+// ユーザー出品閲覧履歴テーブル
+model BrowsingHistory {
+    id        String   @id @default(uuid())
+    userId    String?  @map("user_id") // ユーザーID外部キー
+    itemId    String   @map("item_id") // 出品情報ID外部キー
+    browsedAt DateTime @default(now()) @map("browsed_at") // 閲覧日時
+
+    user User? @relation(fields: [userId], references: [id])
+    item Item  @relation(fields: [itemId], references: [id])
+
+    @@index([userId], name: "idx_browsing_histories_user_id")
+    @@index([itemId], name: "idx_browsing_histories_item_id")
+    @@map("browsing_history")
+}
+
+// お知らせテーブル
+model Notification {
+    id                 String   @id @default(uuid())
+    date               DateTime @default(now()) // お知らせ日時
+    content            String // 内容
+    notificationTypeId String   @map("notification_type_id") // お知らせ種別ID外部キー
+
+    notificationType NotificationType @relation(fields: [notificationTypeId], references: [id])
+
+    userNotificationReads UserNotificationRead[]
+
+    @@index([notificationTypeId], name: "idx_notifications_notification_type_id")
+    @@map("notifications")
+}
+
+// ユーザーお知らせ既読情報テーブル
+model UserNotificationRead {
+    id             String @id @default(uuid())
+    notificationId String @map("notification_id") // お知らせID外部キー
+    userId         String @map("user_id") // ユーザーID外部キー
+
+    user         User         @relation(fields: [userId], references: [id])
+    notification Notification @relation(fields: [notificationId], references: [id])
+
+    @@unique([notificationId, userId])
+    @@index([notificationId], name: "idx_user_notification_reads_notification_id")
+    @@index([userId], name: "idx_user_notification_reads_user_id")
+    @@map("user_notification_reads")
+}
+
+// お知らせ種別テーブル
+model NotificationType {
+    id            String  @id @default(uuid())
+    name          String  @unique // お知らせ種別名
+    defaultPermit Boolean @default(false) @map("default_permit") // デフォルト許可フラグ
+
+    notifications Notification[]
+    permits       UserNotificationPermit[]
+
+    @@map("notification_types")
+}
+
+// ユーザーお知らせ許可情報テーブル
+model UserNotificationPermit {
+    id                 String  @id @default(uuid())
+    userId             String  @map("user_id") // ユーザーID外部キー
+    notificationTypeId String  @map("notification_type_id") // お知らせ種別ID外部キー
+    isPermit           Boolean @default(false) @map("is_permit") // 通知許可フラグ
+
+    user             User             @relation(fields: [userId], references: [id])
+    notificationType NotificationType @relation(fields: [notificationTypeId], references: [id])
+
+    @@unique([userId, notificationTypeId])
+    @@index([userId], name: "idx_user_notification_permits_user_id")
+    @@index([notificationTypeId], name: "idx_user_notification_permits_notification_type_id") // お知らせ種別IDに対するインデックス
+    @@map("user_notification_permits")
+}
+
+// 銀行口座情報テーブル
+model BankAccount {
+    id            String @id @default(uuid())
+    userId        String @unique @map("user_id") // ユーザーID外部キー
+    bankName      String @map("bank_name") // 銀行名
+    bankCode      String @map("bank_code") // 金融機関コード
+    branchName    String @map("branch_name") // 支店名
+    branchNumber  String @map("branch_number") // 支店番号
+    accountType   Int    @map("account_type") // 銀行種別
+    accountNumber String @map("account_number") // 口座番号
+    accountName   String @map("account_name") // 口座名義
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@index([userId], name: "idx_bank_accounts_user_id")
+    @@map("bank_accounts")
+}
+
+// Auth.js認証情報テーブル
+model Account {
+    id                String  @id @default(uuid())
+    userId            String  @map("user_id")
+    type              String
+    provider          String
+    providerAccountId String  @map("provider_account_id")
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
+    expires_at        Int?
+    token_type        String?
+    scope             String?
+    id_token          String? @db.Text
+    session_state     String?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([provider, providerAccountId])
+    @@index([userId], name: "idx_accounts_user_id")
+    @@map("accounts")
+}
+
+// Auth.jsセッションテーブル
+model Session {
+    id           String   @id @default(uuid())
+    sessionToken String   @unique @map("session_token")
+    userId       String   @map("user_id")
+    expires      DateTime
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId], name: "idx_sessions_user_id")
+    @@map("sessions")
+}
+
+// Auth.js認証トークンテーブル
+model VerificationToken {
+    id         String   @id @default(uuid())
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+    @@map("verification_tokens")
+}
