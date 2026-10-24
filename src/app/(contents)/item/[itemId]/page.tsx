@@ -22,17 +22,18 @@ import { type Metadata } from "next";
 import { Suspense } from "react";
 
 type Props = {
-  params: {
+  params: Promise<{
     itemId: string;
-  };
+  }>;
 };
 
 /**
  * OGP生成
  */
 export const generateMetadata = async ({
-  params: { itemId },
+  params,
 }: Props): Promise<Metadata> => {
+  const { itemId } = await params;
   const item = await findItemWithHandling(itemId);
   return {
     title: item.name,
@@ -54,7 +55,8 @@ export const generateMetadata = async ({
  * /item/[itemId]
  * @returns loading > 出品のプレースホルダ > 出品情報 > [いいね状況,コメント一覧] > 読込完了
  */
-const Page = async ({ params: { itemId } }: Props) => {
+const Page = async ({ params }: Props) => {
+  const { itemId } = await params;
   const [item, sessionUser] = await Promise.all([
     findItemWithHandling(itemId),
     getSessionUser(),

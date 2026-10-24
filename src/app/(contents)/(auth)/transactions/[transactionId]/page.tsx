@@ -32,10 +32,11 @@ export const metadata: Metadata = {
  * /transactions/[transactionId]
  */
 const Page = async ({
-  params: { transactionId },
+  params,
 }: {
-  params: { transactionId: string };
+  params: Promise<{ transactionId: string }>;
 }) => {
+  const { transactionId } = await params;
   const { transaction, sessionUser, seller, userType, statusCode } =
     await findTransactionWithHandling(transactionId);
 

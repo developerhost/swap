@@ -4,21 +4,25 @@ import { type Item } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     page: number;
     size: number;
     sort: keyof Item;
     order: "asc" | "desc";
-  };
+  }>;
 };
 
 /**
  * 閲覧履歴一覧を表示するページ
  * /mypage/items/browsing-history
  */
-const Page = async ({
-  searchParams: { page = 1, size = 27, sort = "createdAt", order = "desc" },
-}: Props) => {
+const Page = async ({ searchParams }: Props) => {
+  const {
+    page = 1,
+    size = 27,
+    sort = "createdAt",
+    order = "desc",
+  } = await searchParams;
   const user = await getSessionUser();
   if (!user) {
     redirect("/api/auth/login");

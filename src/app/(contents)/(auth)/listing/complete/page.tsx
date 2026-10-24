@@ -14,8 +14,12 @@ export const metadata: Metadata = {
  * /listing/complete
  * @returns page
  */
-const Page = ({ searchParams }: { searchParams: { item_id: string } }) => {
-  const itemId = searchParams.item_id;
+const Page = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{ item_id: string }>;
+}) => {
+  const { item_id: itemId } = await searchParams;
   return (
     <>
       <div>出品が完了しました！</div>

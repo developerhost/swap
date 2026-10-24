@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    typedRoutes: true,
-    serverComponentsExternalPackages: ["sequelize", "pino", "pino-pretty"],
-  },
+  typedRoutes: false,
+  serverExternalPackages: ["sequelize", "pino", "pino-pretty"],
   images: {
     remotePatterns: [
       { hostname: "images.unsplash.com" },

@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 const Page = async () => {
   const user = await getSessionUser();
   if (!user) {
-    redirect("api/auth/login");
+    redirect("/api/auth/login");
   }
 
   return (

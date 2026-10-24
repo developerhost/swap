@@ -4,31 +4,32 @@ import { ItemSortContainer } from "@/features/itemSort";
 import { PublicItemListContainer } from "@/features/publicItemList";
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     page: number;
     size: number;
     sort: keyof Item | "likes";
     order: "asc" | "desc";
     onlySelling?: boolean;
-  };
+  }>;
 };
 
 /**
  * TOPページ
  */
-const Page = ({
-  searchParams: {
+const Page = async ({ searchParams }: Props) => {
+  const {
     page = 1,
     size = 27,
     sort = "createdAt",
     order = "desc",
     onlySelling,
-  },
-}: Props) => (
-  <>
-    <ItemSortContainer {...{ path: "/", sort, order, onlySelling }} />
-    <PublicItemListContainer {...{ page, size, sort, order, onlySelling }} />
-  </>
-);
+  } = await searchParams;
+  return (
+    <>
+      <ItemSortContainer {...{ path: "/", sort, order, onlySelling }} />
+      <PublicItemListContainer {...{ page, size, sort, order, onlySelling }} />
+    </>
+  );
+};
 
 export default Page;

@@ -9,8 +9,8 @@ import { setCookie } from "@/utils/cookies/server";
  * この cookie はサイト閲覧の可否のみを判断するため,
  * httpOnly や secure などのオプションはつけない.
  */
-export const addAgeCheckedCookie = () => {
-  setCookie(COOKIES_ENUM.AGE_CHECK, "true", {
+export const addAgeCheckedCookie = async () => {
+  await setCookie(COOKIES_ENUM.AGE_CHECK, "true", {
     maxAge: 60 * 60 * 24 * 30, // 30日間
   });
 };
