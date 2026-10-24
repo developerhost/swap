@@ -5,22 +5,21 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/utils/session";
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     query: string;
     page: number;
     size: number;
     sort?: keyof Item;
     order: "asc" | "desc";
-  };
+  }>;
 };
 
 /**
  *  購入商品一覧を表示するページ
  * /mypage/items/purchases
  */
-const Page = async ({
-  searchParams: { page = 1, size = 8, sort, order = "desc" },
-}: Props) => {
+const Page = async ({ searchParams }: Props) => {
+  const { page = 1, size = 8, sort, order = "desc" } = await searchParams;
   const user = await getSessionUser();
   if (!user) {
     redirect("/api/auth/login");

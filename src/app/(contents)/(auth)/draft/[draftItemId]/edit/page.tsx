@@ -8,7 +8,7 @@ import { getSessionUser } from "@/utils";
 import { type Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-type Props = { params: { draftItemId: string } };
+type Props = { params: Promise<{ draftItemId: string }> };
 
 export const metadata: Metadata = {
   title: "下書き商品の編集",
@@ -19,7 +19,8 @@ export const metadata: Metadata = {
  * 下書き商品編集ページ
  * /draft/[draftItemId]/edit
  */
-const Page = async ({ params: { draftItemId } }: Props) => {
+const Page = async ({ params }: Props) => {
+  const { draftItemId } = await params;
   const [draftItem, tags, user] = await Promise.all([
     findDraftItemWithHandling(draftItemId),
     findTags(),

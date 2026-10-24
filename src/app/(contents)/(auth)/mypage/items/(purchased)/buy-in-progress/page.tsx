@@ -4,22 +4,21 @@ import { type Item } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     query: string;
     page: number;
     size: number;
     sort?: keyof Item;
     order: "asc" | "desc";
-  };
+  }>;
 };
 
 /**
  *  購入取引中の商品一覧ページ
  *  mypage/items/buy-in-progress
  */
-const Page = async ({
-  searchParams: { page = 1, size = 8, sort, order = "desc" },
-}: Props) => {
+const Page = async ({ searchParams }: Props) => {
+  const { page = 1, size = 8, sort, order = "desc" } = await searchParams;
   const user = await getSessionUser();
   if (!user) {
     redirect("/api/auth/login");

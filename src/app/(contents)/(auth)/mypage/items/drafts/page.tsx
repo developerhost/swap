@@ -5,21 +5,25 @@ import { MypageItemListContainer } from "@/app/(contents)/(auth)/mypage/items/_c
 import { getSessionUser } from "@/utils/session";
 
 type Props = {
-  searchParams: {
+  searchParams: Promise<{
     page: number;
     size: number;
     sort: keyof DraftItem;
     order: "asc" | "desc";
-  };
+  }>;
 };
 
 /**
  *  下書き商品一覧を表示するページ
  * /mypage/items/drafts
  */
-const Page = async ({
-  searchParams: { page = 1, size = 8, sort = "createdAt", order = "desc" },
-}: Props) => {
+const Page = async ({ searchParams }: Props) => {
+  const {
+    page = 1,
+    size = 8,
+    sort = "createdAt",
+    order = "desc",
+  } = await searchParams;
   const user = await getSessionUser();
   if (!user) {
     redirect("/api/auth/login");

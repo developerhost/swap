@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
  * Cookieを安全にセットするためのサーバー側ラッパー関数
  * @param args Cookieのキーかオプション
  */
-export const setCookie = (
+export const setCookie = async (
   ...args:
     | [
         key: CookieKey,
@@ -17,23 +17,23 @@ export const setCookie = (
       ]
     | [options: ResponseCookie]
 ) => {
-  cookies().set(...args);
+  (await cookies()).set(...args);
 };
 
 /**
  * Cookieを安全に取得するためのサーバー側ラッパー関数
  * @param key 定数に登録済みのCookieキー
  */
-export const getCookie = (key: CookieKey) => cookies().get(key);
+export const getCookie = async (key: CookieKey) => (await cookies()).get(key);
 
 /**
  * Cookieを安全に削除するためのサーバー側ラッパー関数
  * @param  args Cookieのキーかオプション
  */
-export const deleteCookie = (
+export const deleteCookie = async (
   ...args:
     | [key: CookieKey]
     | [options: Omit<ResponseCookie, "value" | "expires">]
 ) => {
-  cookies().delete(...args);
+  (await cookies()).delete(...args);
 };

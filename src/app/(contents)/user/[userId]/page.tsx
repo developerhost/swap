@@ -5,14 +5,14 @@ import { type Item } from "@prisma/client";
 import { notFound } from "next/navigation";
 
 type Props = {
-  params: { userId: string };
-  searchParams: {
+  params: Promise<{ userId: string }>;
+  searchParams: Promise<{
     query: string;
     page: number;
     size: number;
     sort: keyof Item;
     order: "asc" | "desc";
-  };
+  }>;
 };
 
 /**
@@ -20,11 +20,15 @@ type Props = {
  * /user/[userId]
  * @todo ユーザー情報を表示する
  */
-const Page = async ({
-  params,
-  searchParams: { page = 1, size = 27, sort = "createdAt", order = "desc" },
-}: Props) => {
-  const user = await findUserById(params.userId);
+const Page = async ({ params, searchParams }: Props) => {
+  const { userId } = await params;
+  const {
+    page = 1,
+    size = 27,
+    sort = "createdAt",
+    order = "desc",
+  } = await searchParams;
+  const user = await findUserById(userId);
   if (!user) {
     notFound();
   }

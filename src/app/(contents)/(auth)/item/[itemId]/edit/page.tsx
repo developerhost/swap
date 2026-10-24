@@ -10,12 +10,13 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: { itemId: string } };
+type Props = { params: Promise<{ itemId: string }> };
 
 /** メタデータを生成する */
 export const generateMetadata = async ({
-  params: { itemId },
+  params,
 }: Props): Promise<Metadata> => {
+  const { itemId } = await params;
   const item = await findItemWithHandling(itemId);
   return {
     title: `商品の編集: ${item.name}`,
@@ -27,7 +28,8 @@ export const generateMetadata = async ({
  * アイテム編集ページ
  * /item/[itemId]/edit
  */
-const Page = async ({ params: { itemId } }: Props) => {
+const Page = async ({ params }: Props) => {
+  const { itemId } = await params;
   const [item, tags, user] = await Promise.all([
     findItemWithHandling(itemId),
     findTags(),

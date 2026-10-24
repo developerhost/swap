@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { env } from "@/utils/serverEnv";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type NextAuthOptions } from "next-auth";
-import { type Adapter } from "next-auth/adapters";
+import { type Adapter, type AdapterUser } from "next-auth/adapters";
 import GoogleProvider from "next-auth/providers/google";
 
 /**
@@ -12,7 +12,7 @@ import GoogleProvider from "next-auth/providers/google";
  */
 const adapter: Adapter = {
   ...PrismaAdapter(prisma),
-  createUser: ({ emailVerified, ...data }) =>
+  createUser: ({ emailVerified, ...data }: AdapterUser) =>
     prisma.user.create({
       data: {
         ...data,

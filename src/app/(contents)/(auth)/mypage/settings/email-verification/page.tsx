@@ -10,9 +10,9 @@ import { Section, TitleUnderbar } from "@/ui/structure";
 const Page = async ({
   searchParams,
 }: {
-  searchParams: { code: string | undefined };
+  searchParams: Promise<{ code: string | undefined }>;
 }) => {
-  const code = searchParams.code;
+  const { code } = await searchParams;
   const result = await verifyEmail(code);
 
   return (

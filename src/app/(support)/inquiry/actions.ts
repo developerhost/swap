@@ -47,7 +47,7 @@ export const sendInquiry = async (
     };
   }
 
-  const header = headers();
+  const header = await headers();
   const ip = header.get("x-real-ip") || header.get("x-forwarded-for") || "";
   if (ip) {
     // 日本IPであるかどうかのチェックを行う
